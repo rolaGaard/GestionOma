@@ -36,6 +36,7 @@ button{font:inherit;color:inherit}
 
 /* gate */
 #gate{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:50}
+#gate[hidden]{display:none}
 #gate form{background:var(--card);border:1px solid var(--line);padding:32px 28px;width:min(360px,92vw);border-radius:12px}
 #gate h1{font-size:22px;margin:0 0 4px;font-weight:600}
 #gate p{margin:0 0 18px;color:var(--ink-2)}
@@ -442,7 +443,9 @@ function bindTabs(){
   if(saved&&tabs.some(t=>t.id===saved))show(saved);
 }
 
+let STARTED=false;
 function start(){
+  if(STARTED)return;STARTED=true;
   document.getElementById("asOf").textContent=AS_OF;
   chArs=mkChart(document.getElementById("cArs"),"ars");
   chUsd=mkChart(document.getElementById("cUsd"),"usd");
