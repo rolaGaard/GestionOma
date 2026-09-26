@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gestión Oma</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --paper:#F4F6F5; --card:#FFFFFF; --ink:#16212B; --ink-2:#4E5A66; --line:#D9DEE1;
+  --ars:#1F4FB3; --ars-soft:#DCE5F7; --usd:#1C7A5A; --usd-soft:#D8EEE4;
+  --ipc:#B93A2E; --ipc-soft:#F5DAD6; --neutral:#8B95A0; --focus:#F2B705;
+  font-family:"Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+@media (prefers-color-scheme:dark){ :root:not([data-theme="light"]){
+  --paper:#101619; --card:#18212A; --ink:#EEF2F4; --ink-2:#A7B1BB; --line:#2B3640;
+  --ars:#7FA5F5; --ars-soft:#1E2E4E; --usd:#5CC69B; --usd-soft:#173629;
+  --ipc:#F08A7E; --ipc-soft:#4A2320; --neutral:#7C8791;
+}}
+:root[data-theme="dark"]{
+  --paper:#101619; --card:#18212A; --ink:#EEF2F4; --ink-2:#A7B1BB; --line:#2B3640;
+  --ars:#7FA5F5; --ars-soft:#1E2E4E; --usd:#5CC69B; --usd-soft:#173629;
+  --ipc:#F08A7E; --ipc-soft:#4A2320; --neutral:#7C8791;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--paper);color:var(--ink);font-size:15px;line-height:1.45;font-variant-numeric:tabular-nums}
+a{color:inherit}
+button{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+
+/* gate */
+#gate{position:fixed;inset:0;background:var(--paper);display:flex;align-items:center;justify-content:center;z-index:50}
+#gate form{background:var(--card);border:1px solid var(--line);padding:32px 28px;width:min(360px,92vw);border-radius:12px}
+#gate h1{font-size:22px;margin:0 0 4px;font-weight:600}
+#gate p{margin:0 0 18px;color:var(--ink-2)}
+#gate input{width:100%;padding:11px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper);color:var(--ink);font:inherit;font-size:16px}
+#gate button{margin-top:12px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--ars);color:#fff;font-weight:600;cursor:pointer}
+#gate .err{color:var(--ipc);min-height:20px;margin-top:8px;font-size:14px}
+
+/* tabs */
+nav.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:0 0 22px}
+nav.tabs button{background:transparent;border:0;border-bottom:3px solid transparent;padding:10px 14px;margin-bottom:-1px;font-size:16px;font-weight:600;color:var(--ink-2);cursor:pointer}
+nav.tabs button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--ars)}
+[role="tabpanel"][hidden]{display:none}
+.note{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--neutral);border-radius:10px;padding:12px 16px;color:var(--ink-2);font-size:14px;margin-bottom:20px}
+/* layout */
+main{max-width:1080px;margin:0 auto;padding:28px 20px 64px}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:8px 24px;border-bottom:2px solid var(--ink);padding-bottom:12px;margin-bottom:22px}
+header.top h1{font-size:26px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.top .sub{color:var(--ink-2)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi .l{color:var(--ink-2);font-size:13px}
+.kpi .v{font-size:26px;font-weight:600;margin-top:2px;letter-spacing:-.01em}
+.kpi .d{font-size:13px;margin-top:4px;color:var(--ink-2)}
+.kpi .d b{font-weight:600}
+.up{color:var(--ipc)} .down{color:var(--usd)}
+
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:6px 0 16px}
+.ranges{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.ranges button{padding:7px 12px;border:0;background:transparent;cursor:pointer;color:var(--ink-2);font-weight:500}
+.ranges button+button{border-left:1px solid var(--line)}
+.ranges button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.custom{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2);font-size:14px}
+.custom input{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:var(--ink)}
+.toggle{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--card)}
+.toggle button{padding:7px 12px;border:0;background:transparent;cursor:pointer;color:var(--ink-2)}
+.toggle button+button{border-left:1px solid var(--line)}
+.toggle button[aria-pressed="true"]{background:var(--ars-soft);color:var(--ink);font-weight:600}
+
+section.chart{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:18px 18px 12px;margin-bottom:20px}
+section.chart h2{font-size:17px;margin:0;font-weight:600}
+section.chart .lead{color:var(--ink-2);margin:2px 0 10px;font-size:14px}
+section.chart .lead span{white-space:nowrap}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;vertical-align:-1px;margin-right:4px}
+.canvas-wrap{position:relative;height:340px}
+@media (max-width:640px){.canvas-wrap{height:280px}}
+.usd-note{border-left:3px solid var(--usd);padding-left:10px;color:var(--ink-2);font-size:14px;margin-top:10px}
+
+.tablewrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:820px}
+th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--card)}
+th{color:var(--ink-2);font-weight:600;background:var(--paper)}
+tr:last-child td{border-bottom:0}
+td.gap{color:var(--neutral);font-style:italic}
+.foot{color:var(--ink-2);font-size:13px;margin-top:12px;line-height:1.5}
+.foot p{margin:4px 0}
+h2.sec{font-size:17px;margin:26px 0 10px;font-weight:600}
+</style>
+</head>
+<body>
+
+<div id="gate" hidden>
+  <form id="gateForm" autocomplete="off">
+    <h1>Gestión Oma</h1>
+    <p>Tablero familiar. Ingresá la clave para ver los datos.</p>
+    <label for="pw" style="display:none">Clave</label>
+    <input id="pw" type="password" placeholder="Clave" autofocus>
+    <div class="err" id="gateErr" aria-live="polite"></div>
+    <button type="submit">Entrar</button>
+  </form>
+</div>
+
+<main id="app" hidden>
+  <header class="top">
+    <h1>Gestión Oma</h1>
+    <div class="sub">Datos al <span id="asOf"></span></div>
+  </header>
+  <nav class="tabs" role="tablist" aria-label="Secciones">
+    <button role="tab" id="tab-jub" aria-controls="panel-jub" aria-selected="false">Jubilación</button>
+    <button role="tab" id="tab-sw" aria-controls="panel-sw" aria-selected="true">Swiss Medical</button>
+  </nav>
+
+  <section id="panel-jub" role="tabpanel" aria-labelledby="tab-jub" hidden>
+    <div class="kpis" id="kpisJ"></div>
+    <div class="controls">
+      <div class="ranges" role="group" aria-label="Rango de tiempo" id="rangesJ">
+        <button data-m="12">1A</button>
+        <button data-m="24">2A</button>
+        <button data-m="60">5A</button>
+        <button data-m="120">10A</button>
+        <button data-m="0" aria-pressed="true">Máx</button>
+      </div>
+      <div class="custom">
+        <label for="fromJ">Desde</label><input type="month" id="fromJ">
+        <label for="toJ">Hasta</label><input type="month" id="toJ">
+      </div>
+    </div>
+    <section class="chart">
+      <h2>Haber mínimo + bono, en pesos</h2>
+      <p class="lead"><span><i class="sw" style="background:var(--ars)"></i>Haber mínimo</span> · <span><i class="sw" style="background:var(--ars-soft);border:1px solid var(--ars)"></i>Bono extraordinario</span> · <span><i class="sw" style="background:var(--usd)"></i>Acreditado a Oma (Galicia)</span></p>
+      <div class="canvas-wrap"><canvas id="cJubArs"></canvas></div>
+    </section>
+    <section class="chart">
+      <h2>En dólares (blue)</h2>
+      <p class="lead"><span><i class="sw" style="background:var(--usd)"></i>Haber mínimo + bono en USD</span> · <span><i class="sw" style="background:var(--neutral)"></i>Dólar blue (promedio del mes)</span></p>
+      <div class="canvas-wrap"><canvas id="cJubUsd"></canvas></div>
+    </section>
+    <h2 class="sec">Resumen por año</h2>
+    <div class="tablewrap">
+      <table id="tblJ"><thead><tr><th>Año</th><th>Mínimo en enero</th><th>Mínimo en diciembre</th><th>Bono (dic)</th><th>Var. anual del mínimo</th><th>Dic en USD blue</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section id="panel-sw" role="tabpanel" aria-labelledby="tab-sw">
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="controls">
+    <div class="ranges" role="group" aria-label="Rango de tiempo" id="ranges">
+      <button data-m="6">6M</button>
+      <button data-m="12">1A</button>
+      <button data-m="24">2A</button>
+      <button data-m="60">5A</button>
+      <button data-m="0" aria-pressed="true">Máx</button>
+    </div>
+    <div class="custom">
+      <label for="from">Desde</label><input type="month" id="from">
+      <label for="to">Hasta</label><input type="month" id="to">
+    </div>
+    <div class="toggle" role="group" aria-label="Comparación" id="mode">
+      <button data-mode="mm" aria-pressed="true">Mensual</button>
+      <button data-mode="yy">Interanual</button>
+    </div>
+  </div>
+
+  <section class="chart">
+    <h2>En pesos</h2>
+    <p class="lead"><span><i class="sw" style="background:var(--ars)"></i>Cuota total facturada</span> · <span><i class="sw" style="background:var(--ars-soft);border:1px solid var(--ars)"></i>Variación de la cuota</span> · <span><i class="sw" style="background:var(--ipc)"></i>Inflación IPC (INDEC)</span></p>
+    <div class="canvas-wrap"><canvas id="cArs"></canvas></div>
+  </section>
+
+  <section class="chart">
+    <h2>En dólares (blue)</h2>
+    <p class="lead"><span><i class="sw" style="background:var(--usd)"></i>Cuota en USD</span> · <span><i class="sw" style="background:var(--usd-soft);border:1px solid var(--usd)"></i>Variación de la cuota en USD</span> · <span><i class="sw" style="background:var(--neutral)"></i>Dólar blue (promedio del mes)</span></p>
+    <div class="canvas-wrap"><canvas id="cUsd"></canvas></div>
+    <p class="usd-note">Una barra positiva significa que la cuota subió más que el dólar ese mes: eso es inflación en dólares. Una barra negativa, que el dólar corrió más rápido que la cuota.</p>
+  </section>
+
+  <h2 class="sec">Detalle por factura</h2>
+  <div class="tablewrap">
+    <table id="tbl">
+      <thead><tr>
+        <th>Mes de cuota</th><th>Cuota base</th><th>Ajuste edad</th><th>Viajero</th><th>Bonif. / otros</th><th>Total ARS</th><th>Var. ARS</th><th>Blue</th><th>Total USD</th><th>Var. USD</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  </section>
+</main>
+
+<script>
+// Los datos viven en data.json (mismo directorio). Para agregar una factura, agregá una fila en CUOTAS.
+let CUOTAS,BLUE,IPC_M,IPC_Y,MIN_STEPS,MIN_ANCHORS,IPC_MOV,BONO_STEPS,OMA_ACRED,BLUE_OLD,AS_OF;
+const DATA_READY=fetch("data.json?v="+Date.now()).then(r=>{if(!r.ok)throw new Error("data.json "+r.status);return r.json()}).then(d=>{
+  ({CUOTAS,BLUE,IPC_M,IPC_Y,MIN_STEPS,MIN_ANCHORS,IPC_MOV,BONO_STEPS,OMA_ACRED,BLUE_OLD,AS_OF}=d);
+  CUOTAS.sort((a,b)=>a.m<b.m?-1:1);
+});
+</script>
+<script>
+DATA_READY.then(()=>{
+// ---------- UTILIDADES ----------
+const MESES=["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+const fmtARS=n=>n==null?"—":"$ "+n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtUSD=n=>n==null?"—":"US$ "+n.toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtPct=n=>n==null?"—":(n>0?"+":"")+n.toLocaleString("es-AR",{minimumFractionDigits:1,maximumFractionDigits:1})+"%";
+const lbl=m=>{const [y,mo]=m.split("-");return MESES[+mo-1]+" "+y.slice(2)};
+const addM=(m,k)=>{let [y,mo]=m.split("-").map(Number);mo+=k;while(mo>12){mo-=12;y++}while(mo<1){mo+=12;y--}return y+"-"+String(mo).padStart(2,"0")};
+const cssv=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+// serie completa mes a mes desde la primera a la última cuota
+const first=CUOTAS[0].m, last=CUOTAS[CUOTAS.length-1].m;
+const byM=Object.fromEntries(CUOTAS.map(c=>[c.m,c]));
+const ALL=[];
+for(let m=first;m<=last;m=addM(m,1)){
+  const c=byM[m]; const blue=BLUE[m]; const prev=byM[addM(m,-1)]; const yago=byM[addM(m,-12)];
+  const usd=c&&blue?c.total/blue:null;
+  const usdPrev=prev&&BLUE[addM(m,-1)]?prev.total/BLUE[addM(m,-1)]:null;
+  const usdYago=yago&&BLUE[addM(m,-12)]?yago.total/BLUE[addM(m,-12)]:null;
+  ALL.push({m,c,blue,usd,
+    varArsM:c&&prev?(c.total/prev.total-1)*100:null,
+    varArsY:c&&yago?(c.total/yago.total-1)*100:null,
+    varUsdM:usd&&usdPrev?(usd/usdPrev-1)*100:null,
+    varUsdY:usd&&usdYago?(usd/usdYago-1)*100:null,
+    ipcM:IPC_M[m]??null, ipcY:IPC_Y[m]??null});
+}
+
+// ---------- ESTADO ----------
+let range={months:0,from:null,to:null}, mode="mm";
+let chArs, chUsd;
+
+function visible(){
+  let rows=ALL;
+  if(range.from||range.to){rows=rows.filter(r=>(!range.from||r.m>=range.from)&&(!range.to||r.m<=range.to))}
+  else if(range.months>0){const start=addM(last,-(range.months-1));rows=rows.filter(r=>r.m>=start)}
+  return rows;
+}
+
+Chart.defaults.font.family=getComputedStyle(document.body).fontFamily;
+Chart.defaults.font.size=12;
+
+function mkChart(ctx,kind){
+  const ink2=cssv("--ink-2"), line=cssv("--line");
+  const isArs=kind==="ars";
+  return new Chart(ctx,{
+    data:{labels:[],datasets:[
+      {type:"line",label:isArs?"Cuota (ARS)":"Cuota (USD)",data:[],yAxisID:"y",borderColor:cssv(isArs?"--ars":"--usd"),backgroundColor:cssv(isArs?"--ars":"--usd"),borderWidth:2.5,pointRadius:3,pointHoverRadius:5,tension:.25,spanGaps:true,order:1},
+      {type:"bar",label:"Variación cuota",data:[],yAxisID:"y2",backgroundColor:cssv(isArs?"--ars-soft":"--usd-soft"),borderColor:cssv(isArs?"--ars":"--usd"),borderWidth:1,order:3,barPercentage:.7,categoryPercentage:.8},
+      isArs
+        ?{type:"line",label:"Inflación IPC",data:[],yAxisID:"y2",borderColor:cssv("--ipc"),backgroundColor:cssv("--ipc"),borderWidth:2,pointRadius:2.5,borderDash:[4,3],tension:.2,spanGaps:true,order:2}
+        :{type:"line",label:"Dólar blue",data:[],yAxisID:"y3",borderColor:cssv("--neutral"),backgroundColor:cssv("--neutral"),borderWidth:1.5,pointRadius:0,tension:.25,order:2}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{display:false},tooltip:{callbacks:{
+        label:i=>{const d=i.dataset.label,v=i.parsed.y;if(v==null)return null;
+          if(d.startsWith("Cuota"))return d+": "+(isArs?fmtARS(v):fmtUSD(v));
+          if(d==="Dólar blue")return "Blue: $ "+v.toLocaleString("es-AR");
+          return d+": "+fmtPct(v);}}}},
+      scales:{
+        x:{grid:{display:false},ticks:{color:ink2,maxRotation:0,autoSkip:true}},
+        y:{position:"left",grid:{color:line},ticks:{color:ink2,callback:v=>isArs?"$ "+(v/1000).toLocaleString("es-AR")+" mil":"US$ "+v}},
+        y2:{position:"right",grid:{display:false},ticks:{color:ink2,callback:v=>v+"%"},title:{display:true,text:"Variación %",color:ink2}},
+        ...(isArs?{}:{y3:{display:false}})
+      }
+    }
+  });
+}
+
+function render(){
+  const rows=visible();
+  const yy=mode==="yy";
+  const labels=rows.map(r=>lbl(r.m));
+  // ARS
+  chArs.data.labels=labels;
+  chArs.data.datasets[0].data=rows.map(r=>r.c?r.c.total:null);
+  chArs.data.datasets[1].data=rows.map(r=>yy?r.varArsY:r.varArsM);
+  chArs.data.datasets[1].label=yy?"Cuota interanual":"Cuota mensual";
+  chArs.data.datasets[2].data=rows.map(r=>yy?r.ipcY:r.ipcM);
+  chArs.data.datasets[2].label=yy?"IPC interanual":"IPC mensual";
+  chArs.update();
+  // USD
+  chUsd.data.labels=labels;
+  chUsd.data.datasets[0].data=rows.map(r=>r.usd);
+  chUsd.data.datasets[1].data=rows.map(r=>yy?r.varUsdY:r.varUsdM);
+  chUsd.data.datasets[1].label=yy?"Cuota USD interanual":"Cuota USD mensual";
+  chUsd.data.datasets[2].data=rows.map(r=>r.blue??null);
+  chUsd.update();
+}
+
+function kpis(){
+  const cur=ALL[ALL.length-1];
+  const withC=ALL.filter(r=>r.c);
+  const prev=withC[withC.length-2];
+  const yago=ALL.find(r=>r.m===addM(cur.m,-12));
+  const k=[];
+  k.push({l:"Cuota "+lbl(cur.m),v:fmtARS(cur.c.total),d:prev?`vs ${lbl(prev.m)}: <b class="${cur.c.total>prev.c.total?'up':'down'}">${fmtPct((cur.c.total/prev.c.total-1)*100)}</b>`:""});
+  k.push({l:"En dólares blue",v:fmtUSD(cur.usd),d:`blue ${lbl(cur.m)}: $ ${cur.blue.toLocaleString("es-AR")}`});
+  if(yago&&yago.c){
+    let refM=cur.m;while(IPC_Y[refM]==null)refM=addM(refM,-1);const ipcRef=IPC_Y[refM];
+    k.push({l:"Interanual en pesos",v:fmtPct(cur.varArsY),d:`IPC interanual (${lbl(refM)}): <b>${fmtPct(ipcRef)}</b> · brecha <b class="${cur.varArsY>ipcRef?'up':'down'}">${fmtPct(cur.varArsY-ipcRef)}</b>`});
+    k.push({l:"Interanual en dólares",v:fmtPct(cur.varUsdY),d:`de ${fmtUSD(yago.usd)} a ${fmtUSD(cur.usd)}`});
+  }
+  document.getElementById("kpis").innerHTML=k.map(x=>`<div class="kpi"><div class="l">${x.l}</div><div class="v">${x.v}</div><div class="d">${x.d}</div></div>`).join("");
+}
+
+function table(){
+  const tb=document.querySelector("#tbl tbody");
+  tb.innerHTML=ALL.map(r=>{
+    if(!r.c)return `<tr><td>${lbl(r.m)}</td><td class="gap" colspan="9">sin factura en la carpeta</td></tr>`;
+    const c=r.c;
+    const tag=c.src==="mail"?" <small>(mail)</small>":c.src==="est"?" <small>(est.)</small>":"";
+    return `<tr><td>${lbl(r.m)}${tag}</td><td>${fmtARS(c.base)}</td><td>${fmtARS(c.edad)}</td><td>${fmtARS(c.viaj)}</td><td>${fmtARS(c.otros)}</td><td><b>${fmtARS(c.total)}</b></td><td>${fmtPct(r.varArsM)}</td><td>${r.blue.toLocaleString("es-AR")}</td><td>${fmtUSD(r.usd)}</td><td>${fmtPct(r.varUsdM)}</td></tr>`;
+  }).join("");
+}
+
+function bind(){
+  document.getElementById("ranges").addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    range={months:+b.dataset.m,from:null,to:null};
+    document.getElementById("from").value="";document.getElementById("to").value="";
+    render();
+  });
+  const onCustom=()=>{
+    const f=document.getElementById("from").value,t=document.getElementById("to").value;
+    if(!f&&!t)return;
+    document.querySelectorAll("#ranges button").forEach(x=>x.setAttribute("aria-pressed","false"));
+    range={months:0,from:f||null,to:t||null};render();
+  };
+  document.getElementById("from").addEventListener("change",onCustom);
+  document.getElementById("to").addEventListener("change",onCustom);
+  document.getElementById("mode").addEventListener("click",e=>{
+    const b=e.target.closest("button");if(!b)return;
+    document.querySelectorAll("#mode button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    mode=b.dataset.mode;render();
+  });
+  const fr=document.getElementById("from"),to=document.getElementById("to");
+  fr.min=to.min=first;fr.max=to.max=last;
+}
+
+
+// ---------- SERIE JUBILACIÓN ----------
+function blueAt(m){ if(BLUE[m])return BLUE[m]; const [y,mo]=m.split("-"); return BLUE_OLD[y]?BLUE_OLD[y][+mo-1]:null; }
+const JUB=[];
+(function(){
+  const start="2014-01", end="2026-09";
+  let min=null, bono=0;
+  // primero reconstruyo por escalones/anclas/IPC
+  for(let m=start;m<=end;m=addM(m,1)){
+    if(MIN_STEPS[m]!=null)min=MIN_STEPS[m];
+    if(MIN_ANCHORS[m]!=null)min=MIN_ANCHORS[m];
+    else if(m>"2024-12"&&IPC_MOV[m]!=null)min=min*(1+IPC_MOV[m]/100);
+    if(BONO_STEPS[m]!=null)bono=BONO_STEPS[m];
+    JUB.push({m,min,bono});
+  }
+  // corrijo el tramo reconstruido para que cierre en cada ancla (reparto proporcional del error)
+  const idx=Object.fromEntries(JUB.map((r,i)=>[r.m,i]));
+  const anchors=Object.keys(MIN_ANCHORS).sort();
+  for(let k=0;k<anchors.length-1;k++){
+    const a=idx[anchors[k]], b=idx[anchors[k+1]];
+    const target=MIN_ANCHORS[anchors[k+1]], got=JUB[b].min;
+    if(Math.abs(got-target)<0.01)continue;
+    const n=b-a; const ratio=target/got;
+    for(let i=a+1;i<=b;i++){ JUB[i].min=JUB[i].min*Math.pow(ratio,(i-a)/n); }
+  }
+  JUB.forEach(r=>{ r.total=r.min+r.bono; r.blue=blueAt(r.m); r.usd=r.blue?r.total/r.blue:null; r.oma=OMA_ACRED[r.m]??null; });
+})();
+
+let rangeJ={months:0,from:null,to:null}, chJA, chJU;
+function visibleJ(){
+  let rows=JUB; const lastJ=JUB[JUB.length-1].m;
+  if(rangeJ.from||rangeJ.to){rows=rows.filter(r=>(!rangeJ.from||r.m>=rangeJ.from)&&(!rangeJ.to||r.m<=rangeJ.to))}
+  else if(rangeJ.months>0){const st=addM(lastJ,-(rangeJ.months-1));rows=rows.filter(r=>r.m>=st)}
+  return rows;
+}
+function mkJubCharts(){
+  const ink2=cssv("--ink-2"), line=cssv("--line");
+  chJA=new Chart(document.getElementById("cJubArs"),{data:{labels:[],datasets:[
+    {type:"line",label:"Haber mínimo",data:[],borderColor:cssv("--ars"),backgroundColor:cssv("--ars-soft"),borderWidth:2,pointRadius:0,fill:true,tension:.1,order:2,stack:"s"},
+    {type:"line",label:"Bono",data:[],borderColor:cssv("--ars"),backgroundColor:cssv("--ars"),borderWidth:0,pointRadius:0,fill:true,tension:.1,order:1,stack:"s"},
+    {type:"line",label:"Acreditado a Oma",data:[],borderColor:cssv("--usd"),backgroundColor:cssv("--usd"),borderWidth:2,pointRadius:3,spanGaps:true,order:0}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>i.parsed.y==null?null:i.dataset.label+": "+fmtARS(i.parsed.y)}}},
+    scales:{x:{grid:{display:false},ticks:{color:ink2,maxRotation:0,autoSkip:true}},y:{stacked:true,grid:{color:line},ticks:{color:ink2,callback:v=>"$ "+v.toLocaleString("es-AR")}}}}});
+  chJU=new Chart(document.getElementById("cJubUsd"),{data:{labels:[],datasets:[
+    {type:"line",label:"Mínimo + bono (USD)",data:[],yAxisID:"y",borderColor:cssv("--usd"),backgroundColor:cssv("--usd"),borderWidth:2.5,pointRadius:0,tension:.15,order:1},
+    {type:"line",label:"Dólar blue",data:[],yAxisID:"y3",borderColor:cssv("--neutral"),backgroundColor:cssv("--neutral"),borderWidth:1.5,pointRadius:0,tension:.15,order:2}
+  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+    plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>i.parsed.y==null?null:(i.dataset.label==="Dólar blue"?"Blue: $ "+i.parsed.y.toLocaleString("es-AR"):i.dataset.label+": "+fmtUSD(i.parsed.y))}}},
+    scales:{x:{grid:{display:false},ticks:{color:ink2,maxRotation:0,autoSkip:true}},y:{grid:{color:line},ticks:{color:ink2,callback:v=>"US$ "+v}},y3:{display:false}}}});
+}
+function renderJ(){
+  const rows=visibleJ(); const labels=rows.map(r=>lbl(r.m));
+  chJA.data.labels=labels; chJA.data.datasets[0].data=rows.map(r=>r.min); chJA.data.datasets[1].data=rows.map(r=>r.bono); chJA.data.datasets[2].data=rows.map(r=>r.oma); chJA.update();
+  chJU.data.labels=labels; chJU.data.datasets[0].data=rows.map(r=>r.usd); chJU.data.datasets[1].data=rows.map(r=>r.blue); chJU.update();
+}
+function kpisJ(){
+  const cur=JUB[JUB.length-1], yago=JUB.find(r=>r.m===addM(cur.m,-12)), first=JUB[0];
+  const k=[
+    {l:"Haber mínimo "+lbl(cur.m),v:fmtARS(cur.min),d:`+ bono ${fmtARS(cur.bono)} = <b>${fmtARS(cur.total)}</b> bruto`},
+    {l:"En dólares blue",v:fmtUSD(cur.usd),d:`blue ${lbl(cur.m)}: $ ${cur.blue.toLocaleString("es-AR")}`},
+    {l:"Interanual del mínimo",v:fmtPct((cur.min/yago.min-1)*100),d:`IPC interanual ago-26: <b>${fmtPct(IPC_Y["2026-08"])}</b>`},
+    {l:"Desde "+lbl(first.m)+" en USD",v:fmtUSD(first.usd)+" → "+fmtUSD(cur.usd),d:`mínimo + bono en dólares blue`}
+  ];
+  document.getElementById("kpisJ").innerHTML=k.map(x=>`<div class="kpi"><div class="l">${x.l}</div><div class="v">${x.v}</div><div class="d">${x.d}</div></div>`).join("");
+}
+function tableJ(){
+  const years=[...new Set(JUB.map(r=>r.m.slice(0,4)))];
+  let prevDec=null;
+  document.querySelector("#tblJ tbody").innerHTML=years.map(y=>{
+    const rows=JUB.filter(r=>r.m.startsWith(y)); const jan=rows[0], dec=rows[rows.length-1];
+    const varY=prevDec?(dec.min/prevDec.min-1)*100:null; prevDec=dec;
+    const partial=rows.length<12?" (a "+lbl(dec.m).slice(0,3)+")":"";
+    return `<tr><td>${y}${partial}</td><td>${fmtARS(jan.min)}</td><td>${fmtARS(dec.min)}</td><td>${fmtARS(dec.bono)}</td><td>${fmtPct(varY)}</td><td>${fmtUSD(dec.usd)}</td></tr>`;
+  }).join("");
+}
+function bindJ(){
+  document.getElementById("rangesJ").addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;
+    document.querySelectorAll("#rangesJ button").forEach(x=>x.setAttribute("aria-pressed",x===b));
+    rangeJ={months:+b.dataset.m,from:null,to:null};document.getElementById("fromJ").value="";document.getElementById("toJ").value="";renderJ();});
+  const onC=()=>{const f=document.getElementById("fromJ").value,t=document.getElementById("toJ").value;if(!f&&!t)return;
+    document.querySelectorAll("#rangesJ button").forEach(x=>x.setAttribute("aria-pressed","false"));rangeJ={months:0,from:f||null,to:t||null};renderJ();};
+  document.getElementById("fromJ").addEventListener("change",onC);document.getElementById("toJ").addEventListener("change",onC);
+  const fr=document.getElementById("fromJ"),to=document.getElementById("toJ");fr.min=to.min="2014-01";fr.max=to.max="2026-09";
+}
+// ---------- TABS ----------
+function bindTabs(){
+  const tabs=[...document.querySelectorAll('nav.tabs [role="tab"]')];
+  const show=id=>{tabs.forEach(t=>{const on=t.id===id;t.setAttribute("aria-selected",on);document.getElementById(t.getAttribute("aria-controls")).hidden=!on;});
+    try{localStorage.setItem("oma-tab",id)}catch(e){} chArs.resize();chUsd.resize();chJA.resize();chJU.resize();};
+  tabs.forEach(t=>t.addEventListener("click",()=>show(t.id)));
+  let saved=null; try{saved=localStorage.getItem("oma-tab")}catch(e){}
+  if(saved&&tabs.some(t=>t.id===saved))show(saved);
+}
+
+function start(){
+  document.getElementById("asOf").textContent=AS_OF;
+  chArs=mkChart(document.getElementById("cArs"),"ars");
+  chUsd=mkChart(document.getElementById("cUsd"),"usd");
+  kpis();table();bind();render();
+  mkJubCharts();kpisJ();tableJ();bindJ();renderJ();bindTabs();
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change",()=>location.reload());
+}
+
+// ---------- CLAVE ----------
+async function sha(t){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(t));return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+const HASH="bbcce715e73766506c65c397614e31689266fe50ebce2972eec3048892b344c5";
+(async()=>{
+  let ok=false; try{ok=sessionStorage.getItem("oma-ok")==="1"}catch(e){}
+  if(ok){await DATA_READY;document.getElementById("app").hidden=false;start();return}
+  const gate=document.getElementById("gate");gate.hidden=false;
+  document.getElementById("gateForm").addEventListener("submit",async e=>{
+    e.preventDefault();
+    if(await sha(document.getElementById("pw").value)===HASH){try{sessionStorage.setItem("oma-ok","1")}catch(x){}await DATA_READY;gate.hidden=true;document.getElementById("app").hidden=false;start()}
+    else{document.getElementById("gateErr").textContent="Clave incorrecta.";document.getElementById("pw").select()}
+  });
+})();
+window.start=start;
+}).catch(e=>{document.body.insertAdjacentHTML("afterbegin","<p style=\"padding:20px;color:#B93A2E\">No se pudo cargar data.json ("+e.message+"). Si abriste el archivo localmente, subilo a un servidor: el navegador bloquea la lectura de archivos desde file://</p>");console.error(e)});
+</script>
+</body>
+</html>
